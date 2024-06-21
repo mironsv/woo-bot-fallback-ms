@@ -1,43 +1,41 @@
 package io.axtrading.botfallback.services;
 
-import io.axtrading.botfallback.dto.Failure;
-import io.axtrading.botfallback.repositories.NewFailureRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import io.axtrading.botfallback.data.dto.Failure;
+import io.axtrading.botfallback.data.repositories.NewFailureRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.sql.SQLException;
+import java.sql.Date;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
+@Slf4j
 @Service
 public class FailureService {
 
 
-    @Autowired
-    private NewFailureRepository newFailureRepository;
+    final private NewFailureRepository newFailureRepository;
 
-    public Long add(Failure failure) {
-        return newFailureRepository.save(failure);
+    public FailureService(NewFailureRepository newFailureRepository) {
+        this.newFailureRepository = newFailureRepository;
     }
 
-    public String getInfo(int id, String name) {
-        if (id > 0) {
-            try {
-                return newFailureRepository.readTable(id, name);
-            } catch (SQLException e) {
-                e.printStackTrace();
-                return "SQL Error! " + name;
-            }
-        }
-        return "id=" + id + " is incorrect!";
+    public void add(String someText) {
+        newFailureRepository.save(new Failure(Date.valueOf(LocalDate.now()), someText));
     }
 
-    public String delete(int id) {
-        try {
-            if (newFailureRepository.deleteRecordTable(id)) return "Failure with <b>id " + id + "</b> is deleted";
-            else return "Failure with <b>id " + id + "</b> is NOT deleted";
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return "Error SQL !";
-        }
+    @Async
+    public CompletableFuture<List<Failure>> getInfo(Long id, String name) {
+        log.info("id=%s, name=%s".formatted(id, name));
+        //Thread.sleep(id * 2000L);
+        List<Long> ids = new ArrayList<>();
+        ids.add(id);
+        List<Failure> failures = newFailureRepository.findAllById(ids);
+        log.info("n failures=%s".formatted(failures.size()));
+        failures.forEach(failure -> log.info("id=%s, some_text=%s".formatted(failure.getId(), failure.getSomeText())));
+        return CompletableFuture.completedFuture(failures);
     }
-
 }
